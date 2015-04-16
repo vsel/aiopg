@@ -387,3 +387,11 @@ class Connection:
     def echo(self):
         """Return echo mode status."""
         return self._echo
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        yield from self.close()

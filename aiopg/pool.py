@@ -245,6 +245,24 @@ class Pool(asyncio.AbstractServer):
         conn = yield from self.acquire()
         return _ConnectionContextManager(self, conn)
 
+    def get(self):
+        return _ConnManager2(self)
+
+
+class _ConnManager2:
+
+    def __init__(self, pool):
+        self._pool = pool
+        self._conn = None
+
+    async def __aenter__(self):
+        conn = await self._pool.acquire()
+        self._conn = conn
+        return conn
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self._pool.release(conn)
+
 
 class _ConnectionContextManager:
     """Context manager.

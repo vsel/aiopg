@@ -360,3 +360,11 @@ class Cursor:
     def timeout(self):
         """Return default timeout for cursor operations."""
         return self._timeout
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.close()
