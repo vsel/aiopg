@@ -1,4 +1,6 @@
 import asyncio
+import sys
+import traceback
 import warnings
 
 import psycopg2
@@ -6,13 +8,21 @@ import psycopg2
 from .log import logger
 
 
+PY_341 = sys.version_info >= (3, 4, 1)
+
+
 class Cursor:
+
+    _source_traceback = None
 
     def __init__(self, conn, impl, timeout, echo):
         self._conn = conn
         self._impl = impl
         self._timeout = timeout
         self._echo = echo
+        self._loop = conn._loop
+        if self._loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     @property
     def echo(self):
@@ -372,3 +382,16 @@ class Cursor:
                 raise StopIteration
             else:
                 yield row
+
+    if PY_341:  # pragma: no branch
+        def __del__(self):
+            if not self._impl.closed:
+                self.close()
+                warnings.warn("Unclosed cursor {!r}".format(self),
+                              ResourceWarning)
+
+                context = {'cursor': self,
+                           'message': 'Unclosed cursor'}
+                if self._source_traceback is not None:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
